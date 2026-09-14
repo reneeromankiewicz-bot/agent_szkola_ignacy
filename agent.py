@@ -97,9 +97,14 @@ def analizuj_z_gemini(surowy_tekst):
     return response.text.strip()
 
 def wyslij_na_slacka(tekst_raportu):
-    if tekst_raportu == "BRAK":
+    # Czasami modele dopisują kropkę lub białe znaki, upewnijmy się
+    if "BRAK" in tekst_raportu.upper():
         print("Brak nowych zadań - pomijam wysyłkę na Slacka.")
         return
+        
+    print("\n--- WYGENEROWANY RAPORT Z GEMINI ---")
+    print(tekst_raportu)
+    print("------------------------------------\n")
         
     print("Wysyłam raport na Slacka...")
     payload = {
@@ -127,7 +132,15 @@ def wyslij_na_slacka(tekst_raportu):
             }
         ]
     }
-    requests.post(SLACK_WEBHOOK_URL, json=payload)
+    
+    # Przechwytujemy odpowiedź od Slacka
+    odpowiedz = requests.post(SLACK_WEBHOOK_URL, json=payload)
+    
+    if odpowiedz.status_code == 200:
+        print("✅ Sukces! Slack przyjął wiadomość (Kod 200).")
+    else:
+        print(f"❌ BŁĄD SLACKA! Odrzucono wiadomość. Kod: {odpowiedz.status_code}")
+        print(f"Szczegóły błędu od Slacka: {odpowiedz.text}")
 
 def main():
     try:
