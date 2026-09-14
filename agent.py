@@ -17,56 +17,56 @@ def pobierz_dane_z_przegladarki():
         browser = p.chromium.launch(headless=True, args=["--disable-blink-features=AutomationControlled"])
         page = browser.new_page()
         
-        # 1. Logowanie do eduVULCAN
         print("Logowanie: Otwieram stronę...")
         page.goto("https://eduvulcan.pl/logowanie")
-        page.wait_for_timeout(2000)
         
         print("Wpisuję e-mail i klikam 'Dalej'...")
-        page.locator("input[type='email'], input[name='email'], input[type='text']").first.fill(VULCAN_EMAIL, force=True)
-        page.locator("button:has-text('Dalej')").first.evaluate("el => el.click()")
+        # Czekamy ułamek sekundy upewniając się, że formularz jest gotowy
+        page.wait_for_selector("input[type='email']", timeout=10000)
+        page.locator("input[type='email']").first.fill(VULCAN_EMAIL, force=True)
+        page.locator("button:has-text('Dalej')").first.click(force=True)
         
-        page.wait_for_timeout(2000)
+        print("Czekam na pojawienie się pola na hasło...")
+        # TO JEST KLUCZOWE: Czekamy aż animacja "kroku 2" całkowicie się zakończy i pole będzie widoczne
+        page.wait_for_selector("#Password", state="visible", timeout=10000)
         
         print("Wpisuję hasło i klikam 'Zaloguj'...")
-        page.locator("#Password, input[type='password']").first.fill(VULCAN_PASSWORD, force=True)
-        page.locator("button[type='submit'], button:has-text('Zaloguj')").first.evaluate("el => el.click()")
+        page.locator("#Password").first.fill(VULCAN_PASSWORD, force=True)
+        page.locator("button:has-text('Zaloguj')").first.click(force=True)
         
-        page.wait_for_load_state("networkidle", timeout=15000)
+        print("Weryfikuję logowanie (czekam na załadowanie portalu)...")
+        # Czekamy na słowo "Wylogowanie", które oznacza 100% pewności, że jesteśmy w środku!
+        page.wait_for_selector("text=Wylogowanie", timeout=15000)
         
-        # NOWY KROK: Wymuszamy przejście bezpośrednio do widoku wyboru dziennika!
-        print("Przechodzę bezpośrednio do zakładki wyboru profilu...")
+        print("Zalogowano pomyślnie! Przechodzę bezpośrednio do dziennika...")
         page.goto("https://eduvulcan.pl/dostep-do-dziennika/")
-        page.wait_for_timeout(3000) # Czekamy na załadowanie listy profili
+        page.wait_for_timeout(3000) 
         
         print("Wybieram profil ucznia...")
         try:
-            # Używamy fragmentu tekstu, aby uniknąć problemów z dopiskami (np. 'Akwinata')
-            page.locator("text=Ignacy Romankiewicz").first.evaluate("el => el.click()")
-            print("Kliknięto w profil. Czekam na przekierowanie do e-dziennika...")
-            # Po kliknięciu Vulcan otwiera dziennik, musimy chwilę poczekać
+            page.locator("text=Ignacy Romankiewicz").first.click(force=True)
+            print("Kliknięto w profil. Czekam na załadowanie dziennika...")
             page.wait_for_timeout(5000) 
         except Exception as e:
-            print("Nie znalazłem profilu ucznia - próbuję szukać Tablicy mimo to...")
+            print("Nie znalazłem profilu ucznia...")
         
         try:
             print("Czekam na załadowanie panelu (szukam słowa Tablica)...")
-            page.wait_for_selector("text=Tablica", timeout=10000)
+            page.wait_for_selector("text=Tablica", timeout=15000)
         except Exception as e:
             print("\n❌ UWAGA: Nie znalazłem 'Tablicy'. Oto co widzę na ekranie:")
             print("================ POCZĄTEK EKRANU ================")
             print(page.inner_text("body"))
             print("================ KONIEC EKRANU ================\n")
-            raise Exception("Zatrzymano skrypt - sprawdź logi, aby zobaczyć ekran pośredni.")
+            raise Exception("Zatrzymano skrypt - sprawdź logi.")
             
-        # 2. Przejście do zadań
         print("Nawigacja do zadań...")
-        page.locator("text=Sprawdziany i zadania domowe").first.evaluate("el => el.click()")
+        # Klikamy zakładkę z zadaniami
+        page.locator("text=Sprawdziany i zadania domowe").first.click(force=True)
         
-        # Dajemy stronie czas na załadowanie listy sprawdzianów
+        # Dajemy stronie 4 sekundy na pobranie listy zadań z serwera
         page.wait_for_timeout(4000) 
         
-        # 3. Pobranie tekstu
         print("Kopiuję tekst ze strony...")
         surowy_tekst = page.inner_text("body")
         
