@@ -20,26 +20,28 @@ def pobierz_dane_z_przegladarki():
         # 1. Logowanie do eduVULCAN
         print("Logowanie...")
         page.goto("https://eduvulcan.pl/logowanie")
-        page.wait_for_timeout(2000) # Czekamy 2 sekundy na załadowanie ew. skryptów
+        page.wait_for_timeout(2000)
         
-        # Elastyczne wyszukiwanie pól (jeśli nie email, to text)
-        page.locator("input[type='email'], input[name='email'], input[type='text']").first.fill(VULCAN_EMAIL)
-        page.locator("input[type='password'], input[name='password']").first.fill(VULCAN_PASSWORD)
+        # Wymuszamy wpisanie tekstu (force=True ignoruje wyskakujące banery cookies)
+        print("Wpisuję dane logowania...")
+        page.locator("input[type='email'], input[name='email'], input[type='text']").first.fill(VULCAN_EMAIL, force=True)
         
-        # Szukamy przycisku logowania
-        page.locator("button[type='submit'], button:has-text('Zaloguj'), button:has-text('Zaloguj się')").first.click()
+        # Używamy dokładnego id="Password", które widzieliśmy w logach
+        page.locator("#Password, input[type='password']").first.fill(VULCAN_PASSWORD, force=True)
         
-        # Czekamy na załadowanie głównego panelu (np. słowo Tablica)
-        print("Czekam na załadowanie panelu...")
+        print("Klikam przycisk Zaloguj...")
+        page.locator("button[type='submit'], button:has-text('Zaloguj')").first.click(force=True)
+        
+        print("Czekam na załadowanie panelu (szukam słowa Tablica)...")
         page.wait_for_selector("text=Tablica", timeout=20000)
         
         # 2. Przejście do zadań
         print("Nawigacja do zadań...")
-        page.click("text=Sprawdziany i zadania domowe")
+        page.click("text=Sprawdziany i zadania domowe", force=True)
         
-        page.wait_for_timeout(3000) # Czekamy aż lista zadań się wczyta
+        page.wait_for_timeout(3000) 
         
-        # 3. Pobranie całego widocznego tekstu z głównego kontenera
+        # 3. Pobranie tekstu
         print("Kopiuję tekst ze strony...")
         surowy_tekst = page.inner_text("body")
         
