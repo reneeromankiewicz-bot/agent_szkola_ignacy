@@ -14,32 +14,33 @@ client = genai.Client(api_key=GEMINI_API_KEY)
 def pobierz_dane_z_przegladarki():
     print("Uruchamiam wirtualną przeglądarkę...")
     with sync_playwright() as p:
-        # Uruchamiamy Chromium w tle (headless)
         browser = p.chromium.launch(headless=True)
         page = browser.new_page()
         
         # 1. Logowanie do eduVULCAN
         print("Logowanie...")
         page.goto("https://eduvulcan.pl/logowanie")
+        page.wait_for_timeout(2000) # Czekamy 2 sekundy na załadowanie ew. skryptów
         
-        # Wypełniamy pola (Playwright szuka pól po ich typie lub id)
-        page.fill("input[type='email']", VULCAN_EMAIL)
-        page.fill("input[type='password']", VULCAN_PASSWORD)
-        page.click("button[type='submit']")
+        # Elastyczne wyszukiwanie pól (jeśli nie email, to text)
+        page.locator("input[type='email'], input[name='email'], input[type='text']").first.fill(VULCAN_EMAIL)
+        page.locator("input[type='password'], input[name='password']").first.fill(VULCAN_PASSWORD)
         
-        # Czekamy na załadowanie głównego panelu (szukamy tekstu "Tablica" z Twojego screena)
-        page.wait_for_selector("text=Tablica", timeout=15000)
+        # Szukamy przycisku logowania
+        page.locator("button[type='submit'], button:has-text('Zaloguj'), button:has-text('Zaloguj się')").first.click()
+        
+        # Czekamy na załadowanie głównego panelu (np. słowo Tablica)
+        print("Czekam na załadowanie panelu...")
+        page.wait_for_selector("text=Tablica", timeout=20000)
         
         # 2. Przejście do zadań
         print("Nawigacja do zadań...")
-        # Klikamy w element menu na podstawie tekstu
         page.click("text=Sprawdziany i zadania domowe")
         
-        # Czekamy chwilę na przeładowanie widoku
-        page.wait_for_timeout(3000) 
+        page.wait_for_timeout(3000) # Czekamy aż lista zadań się wczyta
         
-        # 3. Pobranie całego widocznego tekstu z głównego kontenera strony
-        # Zamiast parsować HTML, pobieramy czysty tekst, Gemini sobie z tym poradzi
+        # 3. Pobranie całego widocznego tekstu z głównego kontenera
+        print("Kopiuję tekst ze strony...")
         surowy_tekst = page.inner_text("body")
         
         browser.close()
