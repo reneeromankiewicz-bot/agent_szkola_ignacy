@@ -1,9 +1,9 @@
-name: Agent E-dziennika
+name: Agent E-dziennika (Playwright)
 
 on:
   schedule:
-    - cron: '0 */3 * * 1-5' # Uruchamia się co 3 godziny od poniedziałku do piątku
-  workflow_dispatch: # Pozwala uruchomić skrypt ręcznie przyciskiem
+    - cron: '0 */3 * * 1-5'
+  workflow_dispatch:
 
 jobs:
   build:
@@ -18,10 +18,13 @@ jobs:
         
     - name: Install dependencies
       run: |
-        pip install -r requirements.txt
+        pip install requests google-genai playwright
+        playwright install --with-deps chromium
         
     - name: Run Agent
       env:
+        VULCAN_EMAIL: ${{ secrets.VULCAN_EMAIL }}
+        VULCAN_PASSWORD: ${{ secrets.VULCAN_PASSWORD }}
         GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
       run: |
