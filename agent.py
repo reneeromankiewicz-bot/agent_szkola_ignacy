@@ -17,19 +17,25 @@ def pobierz_dane_z_przegladarki():
         browser = p.chromium.launch(headless=True, args=["--disable-blink-features=AutomationControlled"])
         page = browser.new_page()
         
-        # 1. Logowanie do eduVULCAN
-        print("Logowanie...")
+        # 1. Logowanie do eduVULCAN (Krok 1 - Email)
+        print("Logowanie: Otwieram stronę...")
         page.goto("https://eduvulcan.pl/logowanie")
         page.wait_for_timeout(2000)
         
-        print("Wpisuję dane logowania...")
+        print("Wpisuję e-mail i klikam 'Dalej'...")
         page.locator("input[type='email'], input[name='email'], input[type='text']").first.fill(VULCAN_EMAIL, force=True)
+        # Szukamy przycisku Dalej i klikamy przez JS
+        page.locator("button:has-text('Dalej')").first.evaluate("el => el.click()")
+        
+        # Czekamy chwilę na animację przejścia do kroku 2
+        page.wait_for_timeout(2000)
+        
+        # Krok 2 - Hasło
+        print("Wpisuję hasło i klikam 'Zaloguj'...")
         page.locator("#Password, input[type='password']").first.fill(VULCAN_PASSWORD, force=True)
+        page.locator("button[type='submit'], button:has-text('Zaloguj')").first.evaluate("el => el.click()")
         
-        print("Klikam przycisk Zaloguj...")
-        page.locator("#btLogOn").evaluate("button => button.click()")
-        
-        # Czekamy na załadowanie kolejnej strony
+        # Czekamy na załadowanie kolejnej strony po zalogowaniu
         page.wait_for_load_state("networkidle", timeout=15000)
         print(f"Po zalogowaniu robot znajduje się pod adresem: {page.url}")
         
@@ -37,7 +43,7 @@ def pobierz_dane_z_przegladarki():
             print("Czekam na załadowanie panelu (szukam słowa Tablica)...")
             page.wait_for_selector("text=Tablica", timeout=10000)
         except Exception as e:
-            # TRYB DIAGNOSTYCZNY: Jeśli nie ma Tablicy, drukujemy co widać na ekranie
+            # TRYB DIAGNOSTYCZNY
             print("\n❌ UWAGA: Nie znalazłem 'Tablicy'. Oto co widzę na ekranie:")
             print("================ POCZĄTEK EKRANU ================")
             print(page.inner_text("body"))
