@@ -14,7 +14,8 @@ client = genai.Client(api_key=GEMINI_API_KEY)
 def pobierz_dane_z_przegladarki():
     print("Uruchamiam wirtualną przeglądarkę...")
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
+        # Zmiana: dodajemy argumenty, które sprawiają, że bot wygląda bardziej jak zwykła przeglądarka
+        browser = p.chromium.launch(headless=True, args=["--disable-blink-features=AutomationControlled"])
         page = browser.new_page()
         
         # 1. Logowanie do eduVULCAN
@@ -22,22 +23,22 @@ def pobierz_dane_z_przegladarki():
         page.goto("https://eduvulcan.pl/logowanie")
         page.wait_for_timeout(2000)
         
-        # Wymuszamy wpisanie tekstu (force=True ignoruje wyskakujące banery cookies)
         print("Wpisuję dane logowania...")
         page.locator("input[type='email'], input[name='email'], input[type='text']").first.fill(VULCAN_EMAIL, force=True)
-        
-        # Używamy dokładnego id="Password", które widzieliśmy w logach
         page.locator("#Password, input[type='password']").first.fill(VULCAN_PASSWORD, force=True)
         
-        print("Klikam przycisk Zaloguj...")
-        page.locator("button[type='submit'], button:has-text('Zaloguj')").first.click(force=True)
+        print("Klikam przycisk Zaloguj (przez JavaScript)...")
+        # Wykorzystujemy dokładne ID przycisku (#btLogOn) znalezione w Twoich logach
+        page.locator("#btLogOn").evaluate("button => button.click()")
         
         print("Czekam na załadowanie panelu (szukam słowa Tablica)...")
+        # Czekamy na pojawienie się panelu głównego
         page.wait_for_selector("text=Tablica", timeout=20000)
         
         # 2. Przejście do zadań
         print("Nawigacja do zadań...")
-        page.click("text=Sprawdziany i zadania domowe", force=True)
+        # Wymuszamy kliknięcie przez JS również tutaj, dla pewności
+        page.locator("text=Sprawdziany i zadania domowe").first.evaluate("el => el.click()")
         
         page.wait_for_timeout(3000) 
         
