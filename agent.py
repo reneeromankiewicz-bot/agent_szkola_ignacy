@@ -1,10 +1,9 @@
-Python
-from datetime import datetime
-
 import os
 import requests
 from google import genai
 from playwright.sync_api import sync_playwright
+from datetime import datetime
+
 
 # Konfiguracja z GitHub Secrets
 VULCAN_EMAIL = os.environ.get("VULCAN_EMAIL")
