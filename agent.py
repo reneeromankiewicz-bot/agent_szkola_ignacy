@@ -24,10 +24,8 @@ def pobierz_dane_z_przegladarki():
         
         print("Wpisuję e-mail i klikam 'Dalej'...")
         page.locator("input[type='email'], input[name='email'], input[type='text']").first.fill(VULCAN_EMAIL, force=True)
-        # Szukamy przycisku Dalej i klikamy przez JS
         page.locator("button:has-text('Dalej')").first.evaluate("el => el.click()")
         
-        # Czekamy chwilę na animację przejścia do kroku 2
         page.wait_for_timeout(2000)
         
         # Krok 2 - Hasło
@@ -35,15 +33,23 @@ def pobierz_dane_z_przegladarki():
         page.locator("#Password, input[type='password']").first.fill(VULCAN_PASSWORD, force=True)
         page.locator("button[type='submit'], button:has-text('Zaloguj')").first.evaluate("el => el.click()")
         
-        # Czekamy na załadowanie kolejnej strony po zalogowaniu
         page.wait_for_load_state("networkidle", timeout=15000)
         print(f"Po zalogowaniu robot znajduje się pod adresem: {page.url}")
+        
+        # NOWY KROK: Kliknięcie w profil ucznia
+        print("Wybieram profil ucznia...")
+        try:
+            # Wymuszamy kliknięcie w przycisk zawierający imię i nazwisko
+            page.locator("text=Ignacy Romankiewicz").first.evaluate("el => el.click()")
+            print("Kliknięto w profil. Czekam na załadowanie dziennika...")
+            page.wait_for_timeout(4000) # Dajemy stronie czas na przekierowanie
+        except Exception as e:
+            print("Nie znalazłem profilu ucznia - próbuję szukać Tablicy mimo to...")
         
         try:
             print("Czekam na załadowanie panelu (szukam słowa Tablica)...")
             page.wait_for_selector("text=Tablica", timeout=10000)
         except Exception as e:
-            # TRYB DIAGNOSTYCZNY
             print("\n❌ UWAGA: Nie znalazłem 'Tablicy'. Oto co widzę na ekranie:")
             print("================ POCZĄTEK EKRANU ================")
             print(page.inner_text("body"))
