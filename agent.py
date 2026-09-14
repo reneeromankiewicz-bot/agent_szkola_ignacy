@@ -1,3 +1,6 @@
+Python
+from datetime import datetime
+
 import os
 import requests
 from google import genai
@@ -72,15 +75,22 @@ def pobierz_dane_z_przegladarki():
         return surowy_tekst
 
 def analizuj_z_gemini(surowy_tekst):
-    print("Przekazuję dane do Gemini...")
+    # Pobieramy dzisiejszą datę w formacie RRRR-MM-DD
+    dzisiaj = datetime.now().strftime("%Y-%m-%d")
+    
+    print(f"Przekazuję dane do Gemini (dzisiejsza data to: {dzisiaj})...")
+    
+    # Wstrzykujemy zmienną {dzisiaj} bezpośrednio do instrukcji
     prompt = f"""
-    Jesteś asystentem edukacyjnym. Poniżej znajduje się surowy zrzut tekstu z dziennika elektronicznego z zakładki 'Sprawdziany i zadania domowe'.
+    Jesteś asystentem edukacyjnym. Dzisiejsza data to: {dzisiaj}.
+    Poniżej znajduje się surowy zrzut tekstu z dziennika elektronicznego z zakładki 'Sprawdziany i zadania domowe'.
     
     Twoje zadanie:
     1. Przeskanuj tekst i znajdź wszystkie aktualne zadania domowe i nadchodzące sprawdziany/kartkówki.
-    2. Zignoruj elementy menu, stopki, daty przeszłe i elementy nawigacyjne.
-    3. Jeśli nie ma nic nowego, zwróć dokładnie jedno słowo: "BRAK".
-    4. Jeśli są nadchodzące zadania/sprawdziany (np. chemia, języki obce), przygotuj raport w formacie:
+    2. BEZWZGLĘDNIE odrzuć i zignoruj wszystkie zadania i sprawdziany, których termin minął (jest wcześniejszy niż {dzisiaj}).
+    3. Zignoruj elementy menu, stopki, reklamy i elementy nawigacyjne.
+    4. Jeśli po odfiltrowaniu starych dat nie ma nic nowego na przyszłość, zwróć dokładnie jedno słowo: "BRAK".
+    5. Jeśli są nadchodzące zadania/sprawdziany, przygotuj raport w formacie:
        🎯 **Przedmiot:** [Nazwa]
        📅 **Termin:** [Kiedy]
        💡 **Wskazówka od asystenta:** [Krótka, jednozdaniowa merytoryczna pomoc do nauki tego materiału].
@@ -89,15 +99,13 @@ def analizuj_z_gemini(surowy_tekst):
     {surowy_tekst}
     """
     
-    # TUTAJ JEST ZMIANA NA WERSJĘ 3.6
     response = client.models.generate_content(
-        model="gemini-3.6-flash", 
+        model="gemini-3.6-flash",
         contents=prompt
     )
     return response.text.strip()
 
 def wyslij_na_slacka(tekst_raportu):
-    # Czasami modele dopisują kropkę lub białe znaki, upewnijmy się
     if "BRAK" in tekst_raportu.upper():
         print("Brak nowych zadań - pomijam wysyłkę na Slacka.")
         return
@@ -106,34 +114,45 @@ def wyslij_na_slacka(tekst_raportu):
     print(tekst_raportu)
     print("------------------------------------\n")
         
-    print("Wysyłam raport na Slacka...")
-    payload = {
-        "blocks": [
+    print("Wysyłam raport na Slacka (z podziałem na bloki)...")
+    
+    # Dzielimy raport na paczki po maksymalnie 2900 znaków, żeby nie drażnić Slacka
+    limit = 2900
+    kawałki_tekstu = [tekst_raportu[i:i+limit] for i in range(0, len(tekst_raportu), limit)]
+    
+    # Budujemy strukturę wiadomości
+    bloki = []
+    
+    # Dodajemy każdy kawałek tekstu jako osobny blok
+    for kawalek in kawałki_tekstu:
+        bloki.append({
+            "type": "section",
+            "text": {
+                "type": "mrkdwn",
+                "text": kawalek
+            }
+        })
+        
+    # Na samym końcu doklejamy nasz interaktywny przycisk
+    bloki.append({
+        "type": "actions",
+        "elements": [
             {
-                "type": "section",
+                "type": "button",
                 "text": {
-                    "type": "mrkdwn",
-                    "text": tekst_raportu
-                }
-            },
-            {
-                "type": "actions",
-                "elements": [
-                    {
-                        "type": "button",
-                        "text": {
-                            "type": "plain_text",
-                            "text": "✅ Sprawdzone"
-                        },
-                        "style": "primary",
-                        "value": "zrobione_ok"
-                    }
-                ]
+                    "type": "plain_text",
+                    "text": "✅ Sprawdzone"
+                },
+                "style": "primary",
+                "value": "zrobione_ok"
             }
         ]
+    })
+    
+    payload = {
+        "blocks": bloki
     }
     
-    # Przechwytujemy odpowiedź od Slacka
     odpowiedz = requests.post(SLACK_WEBHOOK_URL, json=payload)
     
     if odpowiedz.status_code == 200:
