@@ -89,8 +89,9 @@ def analizuj_z_gemini(surowy_tekst):
     {surowy_tekst}
     """
     
+    # TUTAJ JEST ZMIANA NA WERSJĘ 3.6
     response = client.models.generate_content(
-        model="gemini-2.5-flash",
+        model="gemini-3.6-flash", 
         contents=prompt
     )
     return response.text.strip()
