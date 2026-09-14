@@ -19,36 +19,36 @@ def pobierz_dane_z_przegladarki():
         
         print("Logowanie: Otwieram stronę...")
         page.goto("https://eduvulcan.pl/logowanie")
+        page.wait_for_timeout(3000) # Czekamy "sztywno" 3 sekundy, żeby formularz na pewno się załadował
         
         print("Wpisuję e-mail i klikam 'Dalej'...")
-        # Czekamy ułamek sekundy upewniając się, że formularz jest gotowy
-        page.wait_for_selector("input[type='email']", timeout=10000)
-        page.locator("input[type='email']").first.fill(VULCAN_EMAIL, force=True)
-        page.locator("button:has-text('Dalej')").first.click(force=True)
+        # Wracamy do elastycznego lokalizatora, który działał wcześniej
+        page.locator("input[type='email'], input[name='email'], input[type='text']").first.fill(VULCAN_EMAIL, force=True)
+        page.locator("button:has-text('Dalej')").first.evaluate("el => el.click()")
         
         print("Czekam na pojawienie się pola na hasło...")
-        # TO JEST KLUCZOWE: Czekamy aż animacja "kroku 2" całkowicie się zakończy i pole będzie widoczne
-        page.wait_for_selector("#Password", state="visible", timeout=10000)
+        page.wait_for_timeout(2000) # Czekamy na animację kroku 2
         
         print("Wpisuję hasło i klikam 'Zaloguj'...")
-        page.locator("#Password").first.fill(VULCAN_PASSWORD, force=True)
-        page.locator("button:has-text('Zaloguj')").first.click(force=True)
+        page.locator("#Password, input[type='password']").first.fill(VULCAN_PASSWORD, force=True)
+        page.locator("button[type='submit'], button:has-text('Zaloguj')").first.evaluate("el => el.click()")
         
-        print("Weryfikuję logowanie (czekam na załadowanie portalu)...")
-        # Czekamy na słowo "Wylogowanie", które oznacza 100% pewności, że jesteśmy w środku!
+        print("Weryfikuję logowanie (czekam na 'Wylogowanie')...")
+        # To upewni nas, że hasło zostało przyjęte i jesteśmy w środku
         page.wait_for_selector("text=Wylogowanie", timeout=15000)
         
-        print("Zalogowano pomyślnie! Przechodzę bezpośrednio do dziennika...")
+        print("Zalogowano pomyślnie! Przechodzę bezpośrednio do zakładki wyboru profilu...")
         page.goto("https://eduvulcan.pl/dostep-do-dziennika/")
-        page.wait_for_timeout(3000) 
+        page.wait_for_timeout(4000) 
         
         print("Wybieram profil ucznia...")
         try:
-            page.locator("text=Ignacy Romankiewicz").first.click(force=True)
-            print("Kliknięto w profil. Czekam na załadowanie dziennika...")
+            # Używamy evaluate, żeby kliknięcie na pewno weszło, ignorując ewentualne ukryte warstwy CSS
+            page.locator("text=Ignacy Romankiewicz").first.evaluate("el => el.click()")
+            print("Kliknięto w profil. Czekam na przekierowanie do e-dziennika...")
             page.wait_for_timeout(5000) 
         except Exception as e:
-            print("Nie znalazłem profilu ucznia...")
+            print("Nie znalazłem profilu ucznia. Lecę dalej...")
         
         try:
             print("Czekam na załadowanie panelu (szukam słowa Tablica)...")
@@ -61,10 +61,8 @@ def pobierz_dane_z_przegladarki():
             raise Exception("Zatrzymano skrypt - sprawdź logi.")
             
         print("Nawigacja do zadań...")
-        # Klikamy zakładkę z zadaniami
-        page.locator("text=Sprawdziany i zadania domowe").first.click(force=True)
+        page.locator("text=Sprawdziany i zadania domowe").first.evaluate("el => el.click()")
         
-        # Dajemy stronie 4 sekundy na pobranie listy zadań z serwera
         page.wait_for_timeout(4000) 
         
         print("Kopiuję tekst ze strony...")
