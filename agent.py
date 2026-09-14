@@ -14,7 +14,6 @@ client = genai.Client(api_key=GEMINI_API_KEY)
 def pobierz_dane_z_przegladarki():
     print("Uruchamiam wirtualną przeglądarkę...")
     with sync_playwright() as p:
-        # Zmiana: dodajemy argumenty, które sprawiają, że bot wygląda bardziej jak zwykła przeglądarka
         browser = p.chromium.launch(headless=True, args=["--disable-blink-features=AutomationControlled"])
         page = browser.new_page()
         
@@ -27,17 +26,26 @@ def pobierz_dane_z_przegladarki():
         page.locator("input[type='email'], input[name='email'], input[type='text']").first.fill(VULCAN_EMAIL, force=True)
         page.locator("#Password, input[type='password']").first.fill(VULCAN_PASSWORD, force=True)
         
-        print("Klikam przycisk Zaloguj (przez JavaScript)...")
-        # Wykorzystujemy dokładne ID przycisku (#btLogOn) znalezione w Twoich logach
+        print("Klikam przycisk Zaloguj...")
         page.locator("#btLogOn").evaluate("button => button.click()")
         
-        print("Czekam na załadowanie panelu (szukam słowa Tablica)...")
-        # Czekamy na pojawienie się panelu głównego
-        page.wait_for_selector("text=Tablica", timeout=20000)
+        # Czekamy na załadowanie kolejnej strony
+        page.wait_for_load_state("networkidle", timeout=15000)
+        print(f"Po zalogowaniu robot znajduje się pod adresem: {page.url}")
         
+        try:
+            print("Czekam na załadowanie panelu (szukam słowa Tablica)...")
+            page.wait_for_selector("text=Tablica", timeout=10000)
+        except Exception as e:
+            # TRYB DIAGNOSTYCZNY: Jeśli nie ma Tablicy, drukujemy co widać na ekranie
+            print("\n❌ UWAGA: Nie znalazłem 'Tablicy'. Oto co widzę na ekranie:")
+            print("================ POCZĄTEK EKRANU ================")
+            print(page.inner_text("body"))
+            print("================ KONIEC EKRANU ================\n")
+            raise Exception("Zatrzymano skrypt - sprawdź logi, aby zobaczyć ekran pośredni.")
+            
         # 2. Przejście do zadań
         print("Nawigacja do zadań...")
-        # Wymuszamy kliknięcie przez JS również tutaj, dla pewności
         page.locator("text=Sprawdziany i zadania domowe").first.evaluate("el => el.click()")
         
         page.wait_for_timeout(3000) 
